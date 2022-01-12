@@ -4,7 +4,9 @@ defmodule Wordle do
 		filename
 		|> File.read!
 		|> String.split("\n", trim: true)
-		|> Enum.map(fn line -> line |> String.split("", trim: true) |> Enum.with_index end)
+		|> Enum.map(fn line -> line |> String.split("", trim: true) end)
+		|> Enum.filter(fn chars -> length(chars) == length(Enum.uniq(chars)) end)
+		|> Enum.map(&Enum.with_index/1)
 	end
 
 	def frequencies(filename \\ "words.txt") do
@@ -19,9 +21,15 @@ defmodule Wordle do
 		|> Enum.reverse
 	end
 
+	def score(frequencies, {ch, i}) do
+		0..4
+		|> Enum.map(&(Map.get(frequencies, {ch, &1}, 0) * if(i == &1, do: 2, else: 1)))
+		|> Enum.sum
+	end
+
 	def best_words(frequencies, filename \\ "words.txt") do
 		words(filename)
-		|> Enum.map(fn chars -> chars |> Enum.map(&frequencies[&1]) |> Enum.sum |> then(&{-&1, chars |> Enum.map_join(fn {ch,_} -> ch end)}) end)
+		|> Enum.map(fn chars -> chars |> Enum.map(&score(frequencies, &1)) |> Enum.sum |> then(&{-&1, chars |> Enum.map_join(fn {ch,_} -> ch end)}) end)
 		|> Enum.sort
 		|> Enum.map_join("\n", fn {score, word} -> "#{word} #{-score}"end)
 	end
