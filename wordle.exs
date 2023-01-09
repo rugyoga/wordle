@@ -1,23 +1,17 @@
 
 defmodule Wordle do
-	@allow_repeats true
-	@no_repeats false
 
-	def words(allow_repeats \\ true, filename \\ "wordle.txt") do
+	def words(filename \\ "wordle.txt") do
 		letters = filename
 						|> File.read!
 						|> String.split("\n", trim: true)
 						|> Enum.map(fn line -> line |> String.split("", trim: true) end)
-		letters = if not allow_repeats do
-								letters |> Enum.filter(fn chars -> length(chars) == length(Enum.uniq(chars)) end)
-							else
-								letters
-							end
-		letters |> Enum.map(&Enum.with_index/1)
+						|> Enum.map(&Enum.with_index/1)
 	end
 
 	def frequencies(filename \\ "wordle.txt") do
-		words(filename)
+		filename
+		|> words
 		|> List.flatten
 		|> Enum.frequencies
 	end
@@ -34,8 +28,9 @@ defmodule Wordle do
 		|> Enum.sum
 	end
 
-	def best_words(frequencies, allow_repeats \\ true, filename \\ "words.txt") do
-		words(allow_repeats, filename)
+	def best_words(frequencies, filename \\ "words.txt") do
+		filename
+		|> words
 		|> Enum.map(fn chars -> chars |> Enum.map(&score(frequencies, &1)) |> Enum.sum |> then(&{-&1, chars |> Enum.map_join(fn {ch,_} -> ch end)}) end)
 		|> Enum.sort
 		|> Enum.map_join("\n", fn {score, word} -> "#{word} #{-score}"end)
@@ -45,22 +40,21 @@ defmodule Wordle do
 		0..4
 		|> Enum.map(fn col -> ordered |> Enum.filter(fn {{_, i}, _} -> i == col end) |> Enum.map(fn {{ch,_}, _} -> ch end) end)
 		|> Enum.zip_with(&(&1))
-		|> Enum.map(&Enum.join(&1, ""))
-		|> Enum.join("\n")
+		|> Enum.map_join("\n", &Enum.join(&1, ""))
 	end
 
 	def solutions do
 		filename = "wordle.txt"
 		filename
 		|> Wordle.frequencies
-		|> Wordle.best_words(@allow_repeats, filename)
+		|> Wordle.best_words(filename)
 	end
 
 	def tries do
 		filename = "wordle_obscure.txt"
 		filename
 		|> Wordle.frequencies
-		|> Wordle.best_words(@no_repeats, filename)
+		|> Wordle.best_words(filename)
 	end
 
 	def letters_with_index(word), do: word |> String.split("", trim: true) |> Enum.with_index
@@ -73,7 +67,7 @@ defmodule Wordle do
 			guess_letters = guess |> String.split("", trim: true)
 			guess_set     = guess_letters |> MapSet.new
 			goal_letters
-			|> Enum.zip(guess_letter)
+			|> Enum.zip(guess_letters)
 			|> Enum.map_reduce(goal_counts, fn {gl, gs}, counts -> if gl == gs, do: {{:match, gl}, decrement(counts, g)}, else: {{gs}} )
 		end
 	end
